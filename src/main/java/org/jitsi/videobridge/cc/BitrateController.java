@@ -497,9 +497,8 @@ public class BitrateController
      * we received and taking into account whether or not we 'trust' the
      * bandwidth estimate.
      */
-    private long getAvailableBandwidth()
+    private long getAvailableBandwidth(long nowMs)
     {
-        long nowMs = System.currentTimeMillis();
         boolean trustBwe = this.trustBwe;
         if (trustBwe)
         {
@@ -530,24 +529,29 @@ public class BitrateController
      */
     public void bandwidthChanged(long newBandwidthBps)
     {
-        if (logger.isDebugEnabled())
-        {
-            logger.debug(destinationEndpoint.getID() + " bandwidth has changed, updating");
-        }
-
         if (!isLargerThanBweThreshold(lastBwe, newBandwidthBps))
         {
-            logger.debug("New bandwidth (" + newBandwidthBps  + ") is not signifcantly " +
-                    "changed from previous estimate (" + lastBwe + "), ignoring");
+            if (logger.isDebugEnabled()) {
+                logger.debug("New bandwidth (" + newBandwidthBps + ") is not signifcantly " +
+                        "changed from previous estimate (" + lastBwe + "), ignoring");
+            }
             // If this is a "negligible" change in the bandwidth estimation
             // wrt the last bandwidth estimation that we reacted to, then
             // do not update the bitrate allocation. The goal is to limit
             // the resolution changes due to bandwidth estimation changes,
             // as often resolution changes can negatively impact user
             // experience.
-            return;
         }
-        update(lastEndpointOrdering, newBandwidthBps);
+        else
+        {
+            if (logger.isDebugEnabled())
+            {
+                logger.debug(destinationEndpoint.getID() + " bandwidth has changed, updating");
+            }
+
+            lastBwe = newBandwidthBps;
+            update();
+        }
     }
 
     /**
@@ -566,14 +570,16 @@ public class BitrateController
         {
             logger.debug(destinationEndpoint.getID() + " endpoint ordering has changed, updating");
         }
-        update(conferenceEndpoints, getAvailableBandwidth());
+
+        lastEndpointOrdering = conferenceEndpoints;
+        update();
     }
 
     /**
      * Called to signal constraints on the endpoint to which this BitrateController
      * belongs have changed, so we should recalculate which streams we're forwarding.
      */
-    public void constraintsChanged()
+    private void constraintsChanged()
     {
         if (logger.isDebugEnabled())
         {
@@ -582,7 +588,7 @@ public class BitrateController
         // Neither the endpoints list nor the available bandwidth has changed, so we
         // just use the most recent values of each to drive a new update to take
         // the constraint changes into account
-        update(lastEndpointOrdering, getAvailableBandwidth());
+        update();
     }
 
     /**
@@ -598,16 +604,17 @@ public class BitrateController
      * {@link ConferenceSpeechActivity}.
      * @param bweBps the current bandwidth estimation (in bps)
      */
-    private synchronized void update(List<AbstractEndpoint> conferenceEndpoints, long bweBps)
+    private synchronized void update()
     {
-        lastEndpointOrdering = conferenceEndpoints;
-        lastBwe = bweBps;
+        long nowMs = System.currentTimeMillis();
+
+        long bweBps = getAvailableBandwidth(nowMs);
 
         logger.debug("TEMP: BitrateController " + hashCode() + " updating. " +
                 "bwebps is " + bweBps);
 
         // Create a copy as we may modify the list in the prioritize method.
-        conferenceEndpoints = new ArrayList<>(conferenceEndpoints);
+        List<AbstractEndpoint> conferenceEndpoints = new ArrayList<>(lastEndpointOrdering);
 
         // Compute the bitrate allocation.
         TrackBitrateAllocation[]
@@ -627,8 +634,6 @@ public class BitrateController
         // Accumulators used for tracing purposes.
         long totalIdealBps = 0, totalTargetBps = 0;
         int totalIdealIdx = 0, totalTargetIdx = 0;
-
-        long nowMs = System.currentTimeMillis();
 
         List<AdaptiveTrackProjection> adaptiveTrackProjections = new ArrayList<>();
         if (!ArrayUtils.isNullOrEmpty(trackBitrateAllocations))
@@ -1083,18 +1088,6 @@ public class BitrateController
     }
 
     /**
-     * Gets the {@link List} of endpoints that are currently being forwarded,
-     * represented by their IDs.
-     *
-     * @return the {@link List} of endpoints that are currently being forwarded,
-     * represented by their IDs.
-     */
-    public Collection<String> getForwardedEndpoints()
-    {
-        return forwardedEndpointIds;
-    }
-
-    /**
      * Set the max receive frame height, in pixels, the endpoint to which this
      * {@link BitrateController} belongs is willing to receive
      * @param maxRxFrameHeightPx the max frame height, in pixels
@@ -1103,7 +1096,11 @@ public class BitrateController
     {
         logger.info("BitrateController " + hashCode() + " setting max receive frame height to " +
                 + maxRxFrameHeightPx + "px");
-        this.maxRxFrameHeightPx = maxRxFrameHeightPx;
+        if (this.maxRxFrameHeightPx != maxRxFrameHeightPx)
+        {
+            this.maxRxFrameHeightPx = maxRxFrameHeightPx;
+            this.constraintsChanged();
+        }
     }
 
     /**
@@ -1117,7 +1114,7 @@ public class BitrateController
         if (!this.selectedEndpointIds.equals(selectedEndpointIds))
         {
             this.selectedEndpointIds = new HashSet<>(selectedEndpointIds);
-            update(lastEndpointOrdering, getAvailableBandwidth());
+            update();
         }
     }
 
@@ -1132,7 +1129,7 @@ public class BitrateController
         if (!this.pinnedEndpointIds.equals(pinnedEndpointIds))
         {
             this.pinnedEndpointIds = new HashSet<>(pinnedEndpointIds);
-            update(lastEndpointOrdering, getAvailableBandwidth());
+            update();
         }
     }
 
