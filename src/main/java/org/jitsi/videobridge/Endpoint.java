@@ -26,7 +26,6 @@ import org.jitsi.nlj.transform.node.incoming.*;
 import org.jitsi.nlj.transform.node.outgoing.*;
 import org.jitsi.rtp.*;
 import org.jitsi.rtp.rtcp.*;
-import org.jitsi.rtp.rtcp.rtcpfb.*;
 import org.jitsi.rtp.rtp.*;
 import org.jitsi.utils.concurrent.*;
 import org.jitsi.utils.logging.*;
@@ -45,7 +44,6 @@ import org.jitsi_modified.impl.neomedia.rtp.*;
 import org.jitsi_modified.sctp4j.*;
 import org.jitsi_modified.service.neomedia.rtp.*;
 
-import java.beans.*;
 import java.io.*;
 import java.nio.*;
 import java.time.*;
