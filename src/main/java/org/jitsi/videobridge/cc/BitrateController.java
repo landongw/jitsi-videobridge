@@ -575,22 +575,6 @@ public class BitrateController
     }
 
     /**
-     * Called to signal constraints on the endpoint to which this BitrateController
-     * belongs have changed, so we should recalculate which streams we're forwarding.
-     */
-    private void constraintsChanged()
-    {
-        if (logger.isDebugEnabled())
-        {
-            logger.debug(destinationEndpoint.getID() + " constraints have changed, updating");
-        }
-        // Neither the endpoints list nor the available bandwidth has changed, so we
-        // just use the most recent values of each to drive a new update to take
-        // the constraint changes into account
-        update();
-    }
-
-    /**
      * Computes a new bitrate allocation for every endpoint in the conference,
      * and updates the state of this instance so that bitrate allocation is
      * eventually met.
@@ -1100,12 +1084,17 @@ public class BitrateController
      */
     public void setMaxRxFrameHeightPx(int maxRxFrameHeightPx)
     {
-        logger.info("BitrateController " + hashCode() + " setting max receive frame height to " +
-                + maxRxFrameHeightPx + "px");
         if (this.maxRxFrameHeightPx != maxRxFrameHeightPx)
         {
             this.maxRxFrameHeightPx = maxRxFrameHeightPx;
-            this.constraintsChanged();
+
+            if (logger.isDebugEnabled())
+            {
+                logger.debug(destinationEndpoint.getID() + " setting max receive frame height to " +
+                        + maxRxFrameHeightPx + "px, updating");
+            }
+
+            update();
         }
     }
 
@@ -1144,7 +1133,16 @@ public class BitrateController
      */
     public void setLastN(int lastN)
     {
-        this.lastN = lastN;
+        if (this.lastN != lastN) {
+            this.lastN = lastN;
+
+            if (logger.isDebugEnabled())
+            {
+                logger.debug(destinationEndpoint.getID() + " lastN has changed, updating");
+            }
+
+            update();
+        }
     }
 
     /**
