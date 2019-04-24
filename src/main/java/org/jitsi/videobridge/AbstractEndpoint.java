@@ -37,7 +37,7 @@ import java.util.*;
  * @author Brian Baldino
  */
 public abstract class AbstractEndpoint extends PropertyChangeNotifier
-    implements EncodingsManager.EncodingsUpdateListener, PropertyChangeListener
+    implements EncodingsManager.EncodingsUpdateListener
 {
     public static final String ENDPOINT_CHANGED_PROPERTY_NAME =
             AbstractEndpoint.class.getName() + ".endpoint_changed";
@@ -104,7 +104,6 @@ public abstract class AbstractEndpoint extends PropertyChangeNotifier
         logger = Logger.getLogger(classLogger, conference.getLogger());
         this.id = Objects.requireNonNull(id, "id");
         this.lastNFilter = new LastNFilter(id);
-        conference.addPropertyChangeListener(this);
     }
 
     /**
@@ -298,7 +297,6 @@ public abstract class AbstractEndpoint extends PropertyChangeNotifier
         Conference conference = getConference();
         if (conference != null)
         {
-            conference.removePropertyChangeListener(this);
             conference.endpointExpired(this);
         }
     }

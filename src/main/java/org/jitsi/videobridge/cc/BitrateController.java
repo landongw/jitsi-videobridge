@@ -277,13 +277,12 @@ public class BitrateController
     private long lastBwe = -1;
 
     /**
-     * The most recent list of endpoints, ordered by dominant speaker order,
-     * we've been notified of.
+     * The list of endpoints ids ordered by activity.
      */
-    private List<AbstractEndpoint> lastEndpointOrdering;
+    private List<String> sortedEndpointIds;
 
     /**
-     * The current padding parameters list for {@link Endpoint}.
+     * The main result of the bitrate allocation algorithm computation.
      */
     private List<AdaptiveTrackProjection> adaptiveTrackProjections = Collections.emptyList();
 
@@ -564,14 +563,14 @@ public class BitrateController
      *                            this method SHOULD be invoked when those things change; they
      *                            will be taken into account in this flow)
      */
-    public void endpointOrderingChanged(List<AbstractEndpoint> conferenceEndpoints)
+    public void endpointOrderingChanged(List<String> conferenceEndpoints)
     {
         if (logger.isDebugEnabled())
         {
             logger.debug(destinationEndpoint.getID() + " endpoint ordering has changed, updating");
         }
 
-        lastEndpointOrdering = conferenceEndpoints;
+        sortedEndpointIds = conferenceEndpoints;
         update();
     }
 
@@ -614,11 +613,19 @@ public class BitrateController
                 "bwebps is " + bweBps);
 
         // Create a copy as we may modify the list in the prioritize method.
-        List<AbstractEndpoint> conferenceEndpoints = new ArrayList<>(lastEndpointOrdering);
+        List<AbstractEndpoint> sortedEndpoints = new ArrayList<>(sortedEndpointIds.size());
+        for (String endpointId : sortedEndpointIds)
+        {
+            AbstractEndpoint abstractEndpoint = destinationEndpoint.getConference().getEndpoint(endpointId);
+            if (abstractEndpoint != null)
+            {
+                sortedEndpoints.add(abstractEndpoint);
+            }
+        }
 
         // Compute the bitrate allocation.
         TrackBitrateAllocation[]
-            trackBitrateAllocations = allocate(bweBps, conferenceEndpoints);
+            trackBitrateAllocations = allocate(bweBps, sortedEndpoints);
         logger.debug("TEMP: BitrateController#update got " + trackBitrateAllocations.length +
                 " track allocations");
 
